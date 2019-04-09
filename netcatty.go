@@ -171,19 +171,34 @@ func main() {
 	// Arguments
 	isListen := flag.Bool("l", false, "Enable listening mode")
 	address := flag.String("a", ":4444", "Listen/Connect address in the form of 'ip:port'.\nDomains, IPv6 as ip and Service as port ('localhost:http') also work.")
+	noExec := flag.Bool("m", false, "Disable automatic shell detection and TTY spawn on remote")
+	network := flag.String("n", "tcp", `Network type to use. Known networks are:
+To connect: tcp, tcp4 (IPv4-only), tcp6 (IPv6-only), unix and unixpacket
+To listen: tcp, tcp4, tcp6, unix or unixpacket
+`)
 	flag.Parse()
 
 	// Logo & Help
 	fmt.Println("NetCaTTY - by DZervas <dzervas@dzervas.gr>")
+	fmt.Println()
+	fmt.Println("How to get TTY on remote (automatically executed unless you pass -m):")
+	for shell, cmds := range shellInit {
+		fmt.Printf("%s:\n", shell)
+		for _, cmd := range cmds {
+			fmt.Println(cmd)
+		}
+		fmt.Println()
+	}
 	fmt.Println()
 
 	// Network Stuff
 	var listen net.Listener
 	var conn *NetProxy
 	if *isListen {
-		ln, err := net.Listen("tcp", *address)
+		ln, err := net.Listen(*network, *address)
 		listen = ln
 		handleErr(err)
+		cfmt.Infof("[i] Listening for %s on %s\n", *network, listen.Addr())
 	}
 
 	// Open a TTY and get its file descriptors
@@ -200,10 +215,10 @@ func main() {
 		cfmt.Infoln("[i] Waiting for connection...")
 		if *isListen {
 			c, err := listen.Accept()
-			conn = &NetProxy{c}
 			handleErr(err)
+			conn = &NetProxy{c}
 		} else {
-			c, err := net.Dial("tcp", *address)
+			c, err := net.Dial(*network, *address)
 			conn = &NetProxy{c}
 			handleErr(err)
 		}
@@ -211,13 +226,15 @@ func main() {
 		cfmt.Successln("[+] New client connection:", conn.RemoteAddr())
 		fmt.Println("Press Ctrl-] to close connection")
 
-		shell := detectShell(conn)
-		cfmt.Infof("[i] Detected %s shell!\n", shell)
+		if !*noExec {
+			shell := detectShell(conn)
+			cfmt.Infof("[i] Detected %s shell!\n", shell)
 
-		for _, cmd := range shellInit[shell] {
-			conn.Write([]byte(cmd + "\n"))
+			for _, cmd := range shellInit[shell] {
+				conn.Write([]byte(cmd + "\n"))
+			}
+			enableRawTTY()
 		}
-		enableRawTTY()
 
 		conn.ProxyFiles(in, out)
 
