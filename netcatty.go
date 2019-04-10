@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -19,15 +20,15 @@ var TTY *tty.TTY
 var resetTTY func() error
 var errorString = "netcatty;\r"
 var promptFingerprints = map[string]string{
-	// "cmd": "Microsoft Windows",
-	// "powershell": "PowerShell",
+	"cmd": "Microsoft Windows",
+	"powershell": "PowerShell",
 	// "php": "php",
 	"python": "Python",
 	"sh": "sh-",
 }
 var errorFingerprints = map[string]string{
-	// "powershell": "cmdlet",
-	// "cmd": "internal or external command",
+	"powershell": "cmdlet",
+	"cmd": "internal or external command",
 	// "node": "ReferenceError: netcatty is not defined",
 	// "php": "php",
 	"python": "NameError",
@@ -220,6 +221,15 @@ To listen: tcp, tcp4, tcp6, unix or unixpacket
 	in := t.Input()
 	defer t.Close()  // Make sure that the TTY will close
 	go resizeTTY(t)  // Handle resizes
+
+	// Handle Ctrl-C
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	go func() {
+		<-sig
+		t.Close()
+		os.Exit(0)
+	}()
 
 	// Main Loop
 	for {
