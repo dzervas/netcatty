@@ -83,12 +83,21 @@ Your terminal (with IP 192.168.1.100): `./netcatty -l :4444`
 
 ## Installation
 
+You can download a binary for your platform [here](https://github.com/dzervas/netcatty/releases).
+
 Compile it on your own:
 
 ```bash
 git clone https://github.com/dzervas/netcatty
 cd netcatty
 go run netcatty.go -h
+```
+
+Or compile binaries for all OSes & architectures:
+
+```
+go get github.com/mitchellh/gox
+gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
 ```
 
 ## Usage

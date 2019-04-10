@@ -13,6 +13,8 @@ import (
 	"github.com/mingrammer/cfmt"
 )
 
+var Version = "1.0.0"
+
 var TTY *tty.TTY
 var resetTTY func() error
 var errorString = "netcatty;\r"
@@ -189,8 +191,7 @@ To listen: tcp, tcp4, tcp6, unix or unixpacket
 	flag.Parse()
 
 	// Logo & Help
-	fmt.Println("NetCaTTY - by DZervas <dzervas@dzervas.gr>")
-	fmt.Println()
+	fmt.Printf("NetCaTTY %s - by DZervas <dzervas@dzervas.gr>\n\n", Version)
 	fmt.Println("How to get TTY on remote (automatically executed unless you pass -m):")
 	for shell, cmds := range shellInit {
 		fmt.Printf("%s:\n", shell)
