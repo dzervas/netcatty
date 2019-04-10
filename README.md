@@ -66,8 +66,8 @@ Please don't hurt puppers or kitties with them!
 If you're short on ideas for payloads, check the following:
 
  - msfvenom
- - [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Reverse%20Shell%20Cheatsheet.md) by swisskyrepo
- - [oneliner.sh](https://github.com/operatorequals/oneliner-sh) by operatorequals
+ - [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Reverse%20Shell%20Cheatsheet.md) by [swisskyrepo](https://github.com/swisskyrepo)
+ - [oneliner.sh](https://github.com/operatorequals/oneliner-sh) by [operatorequals](https://github.com/operatorequals) 
 
 ### Bind shell
 

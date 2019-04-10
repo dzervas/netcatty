@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/sys/unix"
 	"github.com/mattn/go-tty"
 	"github.com/mingrammer/cfmt"
 )
@@ -104,6 +105,15 @@ func enableRawTTY() {
 	if resetTTY == nil {
 		cfmt.Warningln("[!] Entering RAW mode (Ctrl-c will go to remote) - press Alt-r to go back to normal")
 		resetTTY, _ = TTY.Raw()
+
+		// Very targeted fix for broken raw tty for non-tty output
+		// Numbers are taken from github.com/mattn/go-tty/tty_linux.go
+
+		// ioctlReadTermios
+		termios, _ := unix.IoctlGetTermios(int(TTY.Input().Fd()), 0x5401)
+		termios.Oflag |= unix.OPOST
+		// ioctlWriteTermios
+		unix.IoctlSetTermios(int(TTY.Input().Fd()), 0x5402, termios)
 	}
 }
 
