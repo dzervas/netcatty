@@ -113,7 +113,6 @@ var opts struct {
 	// TODO
 	Output		string		`short:"o" long:"output"        description:"Output hexdump traffic to FILE (implies -x)"`
 	Port		string		`short:"p" long:"port"          description:"Local port number"`
-	// TODO
 	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
 	// TODO
 	Randomize	bool		`short:"r" long:"randomize"     description:"Randomize local and remote ports"`
@@ -124,7 +123,7 @@ var opts struct {
 	// TODO
 	Telnet		bool		`short:"T" long:"telnet"        description:"answer using TELNET negotiation"`
 	// TODO
-	UDP			bool		`short:"u" long:"udp"           description:"UDP mode"`
+	UDP			bool		`short:"u" long:"udp"           description:"UDP mode (implies -D)"`
 	// TODO
 	Verbose		bool		`short:"v" long:"verbose"       description:"-- Not effective, backwards compatibility"`
 	// TODO
@@ -138,7 +137,7 @@ var opts struct {
 
 	Positional struct {
 		Hostname	string	`positional-arg-name:"hostname"`
-		APort		string	`positional-arg-name:"port"`
+		Port		string	`positional-arg-name:"port"`
 	} `positional-args:"yes"`
 }
 
@@ -148,11 +147,14 @@ func main() {
 	parser.AddGroup("Application Options", "", &opts)
 	_, err := parser.Parse()
 	if err != nil { return }
-	// handleErr(err)
-	// if len(args) > 0 { opts.Hostname = args[0] }
-	// if len(args) > 1 { opts.APort = args[1] }
 
-	address := strings.Join([]string{opts.Positional.Hostname, opts.Port}, ":")
+	// netcat behaviour where to connect you do `nc <ip> <port>`
+	// but to listen you do `nc -lp <port>`
+	address := strings.Join([]string{opts.Positional.Hostname, opts.Positional.Port}, ":")
+	if opts.Listen {
+		address = strings.Join([]string{opts.Positional.Hostname, opts.Port}, ":")
+	}
+
 	protocol := "tcp"
 	if opts.UDP {
 		protocol = "udp"
@@ -161,34 +163,29 @@ func main() {
 		protocol = opts.Protocol
 	}
 
+	// Check if the protocol is "normal", if it has a net.Listen implementation or not
+	normalProto := strings.HasPrefix(opts.Protocol, "tcp") || opts.Protocol == "unix" || opts.Protocol == "unixpacket"
+
 	// Logo & Help
 	fmt.Printf("NetCaTTY %s - by DZervas <dzervas@dzervas.gr>\n\n", Version)
 	fmt.Println("How to get TTY on remote (automatically executed unless you pass -m):")
-	for shell, cmds := range shellInit {
-		fmt.Printf("%s:\n", shell)
-		for _, cmd := range cmds {
-			fmt.Println(cmd)
+	if opts.NoDetect {
+		for shell, cmds := range shellInit {
+			fmt.Printf("%s:\n", shell)
+			for _, cmd := range cmds {
+				fmt.Println(cmd)
+			}
+			fmt.Println()
 		}
-		fmt.Println()
 	}
 	fmt.Println()
-
-	// Network Stuff
-	var listen net.Listener
-	var conn *netcatty.NetProxy
-	if opts.Listen {
-		ln, err := net.Listen(protocol, address)
-		listen = ln
-		handleErr(err)
-		cfmt.Infof("[i] Listening for %s on %s\n", protocol, listen.Addr())
-	}
 
 	// Open a TTY and get its file descriptors
 	t, err := tty.Open()
 	TTY = &netcatty.TTYToggle{TTY: t}
 	handleErr(err)
 	out := TTY.Output()
-	in := TTY.Input()
+	in := &netcatty.Intercept{Reader: TTY.Input()}
 	defer TTY.Close()  // Make sure that the TTY will close
 
 	// Handle Ctrl-C
@@ -200,17 +197,35 @@ func main() {
 		os.Exit(0)
 	}()
 
+
+	// Network Stuff
+	var listen net.Listener
+	var conn *netcatty.ReadWriterProxy
+	if opts.Listen && normalProto {
+		ln, err := net.Listen(protocol, address)
+		listen = ln
+		handleErr(err)
+		cfmt.Infof("[i] Listening for %s on %s\n", protocol, listen.Addr())
+	}
+
 	// Main Loop
 	for {
 		cfmt.Infoln("[i] Waiting for connection...")
 		if opts.Listen {
+			if !normalProto {
+				ln, err := net.ListenPacket(protocol, address)
+				listen = &netcatty.PacketListener{ln}
+				handleErr(err)
+				cfmt.Infof("[i] Listening for %s on %s\n", protocol, listen.Addr())
+			}
+
 			c, err := listen.Accept()
 			handleErr(err)
-			conn = &netcatty.NetProxy{c}
+			conn = &netcatty.ReadWriterProxy{c}
 		} else {
 			c, err := net.Dial(protocol, address)
-			conn = &netcatty.NetProxy{c}
 			handleErr(err)
+			conn = &netcatty.ReadWriterProxy{c}
 		}
 
 		cfmt.Successln("[+] New client connection:", conn.RemoteAddr())
@@ -229,7 +244,7 @@ func main() {
 
 		conn.ProxyFiles(in, out)
 
-		TTY.DisableRawTTY()
 		conn.Close()
+		TTY.DisableRawTTY()
 	}
 }

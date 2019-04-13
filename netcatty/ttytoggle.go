@@ -3,6 +3,7 @@ package netcatty
 import (
 	"golang.org/x/sys/unix"
 	"github.com/mattn/go-tty"
+	"github.com/mingrammer/cfmt"
 )
 
 type TTYToggle struct {
@@ -12,7 +13,7 @@ type TTYToggle struct {
 
 func (this *TTYToggle) EnableRawTTY() {
 	if this.reset == nil {
-		// cfmt.Warningln("[!] Entering RAW mode (Ctrl-c will go to remote) - press Alt-r to go back to normal")
+		cfmt.Warningln("[!] Entering RAW mode (Ctrl-c will go to remote) - press Alt-r to go back to normal")
 		this.reset, _ = this.TTY.Raw()
 
 		// Very targeted fix for broken raw tty for non-tty output
@@ -28,7 +29,7 @@ func (this *TTYToggle) EnableRawTTY() {
 
 func (this *TTYToggle) DisableRawTTY() {
 	if this.reset != nil {
-		// cfmt.Infoln("[i] Exiting RAW mode (Ctrl-c will kill the program)")
+		cfmt.Infoln("[i] Exiting RAW mode (Ctrl-c will kill the program)")
 		this.reset()
 		this.reset = nil
 	}
