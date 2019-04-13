@@ -2,12 +2,20 @@
 
 
 [[projects]]
-  digest = "1:47dc4f6ee8a7dda99b516b56cb7fcc4f53ca94756263bdcea55c918a60126062"
-  name = "github.com/kr/pty"
+  branch = "master"
+  digest = "1:0dc5d1112426dbbf9347bec27b0b71e7e6435e4568d8772a1b8d25c9e01ef1aa"
+  name = "github.com/akamensky/argparse"
   packages = ["."]
   pruneopts = "UT"
-  revision = "521317be5ebc228a0f0ede099fa2a0b5ece22e49"
-  version = "v1.1.4"
+  revision = "28b0496b54cba23e619418cf64e37c7519638ebf"
+
+[[projects]]
+  digest = "1:a2cff208d4759f6ba1b1cd228587b0a1869f95f22542ec9cd17fff64430113c7"
+  name = "github.com/jessevdk/go-flags"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c6ca198ec95c841fdb89fc0de7496fed11ab854e"
+  version = "v1.4.0"
 
 [[projects]]
   branch = "master"
@@ -51,28 +59,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bbe51412d9915d64ffaa96b51d409e070665efc5194fcf145c4a27d4133107a4"
-  name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
-  pruneopts = "UT"
-  revision = "38d8ce5564a5b71b2e3a00553993f1b9a7ae852f"
-
-[[projects]]
-  branch = "master"
-  digest = "1:b521f10a2d8fa85c04a8ef4e62f2d1e14d303599a55d64dabf9f5a02f84d35eb"
-  name = "golang.org/x/sync"
-  packages = ["errgroup"]
-  pruneopts = "UT"
-  revision = "e225da77a7e68af35c70ccbf71af2b83e6acac3c"
-
-[[projects]]
-  branch = "master"
-  digest = "1:503f66aac79cb9135d73679c7fa3e95a6fad82a3da399c505ea282b50ff03723"
+  digest = "1:cf353a5a9ffb2d6f850e9c773e25388a425a70c270546480427ed069e87b136a"
   name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows",
-  ]
+  packages = ["unix"]
   pruneopts = "UT"
   revision = "4b34438f7a67ee5f45cc6132e2bad873a20324e9"
 
@@ -80,12 +69,11 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/kr/pty",
-    "github.com/mattn/go-colorable",
+    "github.com/akamensky/argparse",
+    "github.com/jessevdk/go-flags",
     "github.com/mattn/go-tty",
     "github.com/mingrammer/cfmt",
-    "golang.org/x/crypto/ssh/terminal",
-    "golang.org/x/sync/errgroup",
+    "golang.org/x/sys/unix",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
