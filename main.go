@@ -15,7 +15,7 @@ import (
 	"github.com/mingrammer/cfmt"
 )
 
-var Version = "1.0.0"
+var Version = "1.1.0"
 
 func handleErr(err error) {
 	if err != nil {
