@@ -35,6 +35,6 @@ func (this *Action) Unblock() {
 }
 
 func (this *Action) Unregister() {
-	this.channel <- service.EventRWC{service.EUnregister, nil}
+	this.channel <- service.EventRWC{Event: service.EUnregister}
 	this.service.Stop(this.channel)
 }

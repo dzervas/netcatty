@@ -6,6 +6,7 @@ import (
 	"github.com/dzervas/netcatty/service"
 )
 
+// TODO: Windows (cmd & powershell)
 var shellInit = map[string][]string{
 	"python": { "import pty; pty.spawn('python')" },
 	"sh": {

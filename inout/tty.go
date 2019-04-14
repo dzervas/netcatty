@@ -5,6 +5,7 @@ import (
 	"github.com/mattn/go-tty"
 )
 
+// TODO: Windows requires local echo
 type Tty struct {
 	*tty.TTY
 	reset func() error

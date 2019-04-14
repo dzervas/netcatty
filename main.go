@@ -35,10 +35,9 @@ func NewReadWriteCloser(r io.Reader, w io.Writer, c io.Closer) io.ReadWriteClose
 }
 
 var opts struct {
-	// TODO
-	Close		bool		`short:"c" long:"close"         description:"Close connection on EOF from stdin"`
+	// This is already the behaviour. Probably too difficult (and no reason) to implement
+	// Close		bool		`short:"c" long:"close"         description:"Close connection on EOF from stdin"`
 	Detect		bool		`short:"D" long:"detect"        description:"Detect remote shell automatically and try to raise a TTY on the remote (action)"`
-	// TODO
 	Exec		string		`short:"e" long:"exec"          description:"Program to exec after connect"`
 	// TODO
 	Gateway		[]string	`short:"g" long:"gateway"       description:"Source-routing hop point[s], up to 8"`
@@ -53,12 +52,11 @@ var opts struct {
 	DontResolve	bool		`short:"n" long:"dont-resolve"  description:"Numeric-only IP addresses, no DNS"`
 	// TODO
 	Output		string		`short:"o" long:"output"        description:"Output hexdump traffic to FILE (implies -x)"`
-	Port		string		`short:"p" long:"port"          description:"Local port number"`
+	Port		string		`short:"p" long:"local-port"    description:"Local port number"`
 	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
-	// TODO
+	// Does not have any effect - even on netcat
 	Randomize	bool		`short:"r" long:"randomize"     description:"Randomize local and remote ports"`
 	Raw			bool		`short:"R" long:"auto-raw"      description:"Put local TTY in Raw mode on connect (action)"`
-	// TODO
 	Source		string		`short:"s" long:"source"        description:"Local source address (ip or hostname)"`
 	TCP			bool		`short:"t" long:"tcp"           description:"TCP mode (default)"`
 	// TODO
@@ -90,10 +88,15 @@ func main() {
 
 	// netcat behaviour where to connect you do `nc <ip> <port>`
 	// but to listen you do `nc -lp <port>`
-	address := strings.Join([]string{opts.Positional.Hostname, opts.Positional.Port}, ":")
-	if opts.Listen {
-		address = strings.Join([]string{opts.Positional.Hostname, opts.Port}, ":")
+	hostname := opts.Positional.Hostname
+	port := opts.Positional.Port
+	if opts.Listen && len(opts.Source) > 0 {
+		port = opts.Source
 	}
+	if opts.Listen && len(opts.Port) > 0 {
+		port = opts.Port
+	}
+	address := strings.Join([]string{hostname, port}, ":")
 
 	protocol := "tcp"
 	if opts.UDP {
