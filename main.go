@@ -68,8 +68,7 @@ var opts struct {
 	Verbose		bool		`short:"v" long:"verbose"       description:"-- Not effective, backwards compatibility"`
 	// TODO
 	Version		bool		`short:"V" long:"version"       description:"Output version information and exit"`
-	// TODO
-	Hexdump		bool		`short:"x" long:"hexdump"       description:"Hexdump incoming and outgoing traffic"`
+	HexDump		bool		`short:"x" long:"hexdump"       description:"Hexdump incoming and outgoing traffic"`
 	// TODO
 	Wait		int			`short:"w" long:"wait"          description:"Timeout for connects and final net reads"`
 	Zero		bool		`short:"z" long:"zero"          description:"Zero-I/O mode (used for scanning)"`
@@ -139,6 +138,7 @@ func main() {
 		}
 	}
 
+	if opts.HexDump { ioc = &inout.HexDump{ioc} }
 
 	// Service
 	var s service.Server

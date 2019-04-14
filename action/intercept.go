@@ -6,7 +6,7 @@ import (
 
 var CloseConnection byte = 0x1D  // Ctrl-]
 
-type Intercept struct{
+type Intercept struct {
 	io.Reader
 	channels map[byte][]chan<- byte
 }
