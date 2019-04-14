@@ -1,4 +1,4 @@
-package netcatty
+package action
 
 import (
 	"io"
@@ -9,6 +9,11 @@ var CloseConnection byte = 0x1D  // Ctrl-]
 type Intercept struct{
 	io.Reader
 	channels map[byte][]chan<- byte
+}
+
+func NewIntercept(r io.Reader) *Intercept {
+	Log.Infoln("Press Ctrl-] to end the current stream")
+	return &Intercept{Reader: r}
 }
 
 func (this *Intercept) Notify(c chan<- byte, chars ...byte) {

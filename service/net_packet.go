@@ -1,28 +1,9 @@
-package netcatty
+package service
 
 import (
-	"io"
 	"net"
+	"errors"
 )
-
-type ReadWriterProxy struct {
-	net.Conn
-}
-
-func (this *ReadWriterProxy) ProxyFiles(in io.Reader, out io.Writer) {
-	done := make(chan bool)
-	cp := func(dst io.Writer, src io.Reader) {
-		io.Copy(dst, src)
-		done <- true
-	}
-
-	// Proxy the PTY to the socket - and back
-	go cp(this, in)
-	go cp(out, this)
-
-	// Wait until the socket is closed (or you exit)
-	<-done
-}
 
 // Make PacketConn a Conn
 type PacketConnRW struct {
@@ -33,7 +14,9 @@ type PacketConnRW struct {
 func (this *PacketConnRW) Read(p []byte) (n int, err error) {
 	var addr net.Addr
 
-	this.RemoteAddr()
+	if this.remoteAddr == nil {
+		return 0, errors.New("RemoteAddr is not set")
+	}
 	n, addr, err = this.ReadFrom(p)
 
 	if addr == nil || addr.Network() != this.remoteAddr.Network() || addr.String() != this.remoteAddr.String() {
@@ -44,15 +27,13 @@ func (this *PacketConnRW) Read(p []byte) (n int, err error) {
 }
 
 func (this *PacketConnRW) Write(p []byte) (n int, err error) {
-	this.RemoteAddr()
+	if this.remoteAddr == nil {
+		return 0, errors.New("RemoteAddr is not set")
+	}
 	return this.WriteTo(p, this.remoteAddr)
 }
 
 func (this *PacketConnRW) RemoteAddr() net.Addr {
-	if this.remoteAddr == nil {
-		panic("remoteAddr not set!")
-	}
-
 	return this.remoteAddr
 }
 

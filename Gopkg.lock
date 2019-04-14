@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0dc5d1112426dbbf9347bec27b0b71e7e6435e4568d8772a1b8d25c9e01ef1aa"
-  name = "github.com/akamensky/argparse"
+  digest = "1:ab8f3a4a05a124cc0770467431dedec75063653b1b148651080fd4c6a01445e1"
+  name = "github.com/amoghe/distillog"
   packages = ["."]
   pruneopts = "UT"
-  revision = "28b0496b54cba23e619418cf64e37c7519638ebf"
+  revision = "ae382b35b7179be96f516c07ae0e54b7723a4822"
 
 [[projects]]
   digest = "1:a2cff208d4759f6ba1b1cd228587b0a1869f95f22542ec9cd17fff64430113c7"
@@ -69,7 +69,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/akamensky/argparse",
+    "github.com/amoghe/distillog",
     "github.com/jessevdk/go-flags",
     "github.com/mattn/go-tty",
     "github.com/mingrammer/cfmt",

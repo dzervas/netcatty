@@ -2,89 +2,19 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"strings"
 
-	"github.com/dzervas/netcatty/netcatty"
+	"github.com/dzervas/netcatty/service"
+	"github.com/dzervas/netcatty/inout"
+	"github.com/dzervas/netcatty/action"
 
 	"github.com/jessevdk/go-flags"
-	"github.com/mattn/go-tty"
 	"github.com/mingrammer/cfmt"
 )
 
 var Version = "1.0.0"
-
-var TTY *netcatty.TTYToggle
-var resetTTY func() error
-var errorString = "netcatty;\r"
-var promptFingerprints = map[string]string{
-	"cmd": "Microsoft Windows",
-	"powershell": "PowerShell",
-	// "php": "php",
-	"python": "Python",
-	"sh": "sh-",
-}
-var errorFingerprints = map[string]string{
-	"powershell": "cmdlet",
-	"cmd": "internal or external command",
-	// "node": "ReferenceError: netcatty is not defined",
-	// "php": "php",
-	"python": "NameError",
-	"sh": "netcatty: command not found",
-}
-var shellInit = map[string][]string{
-	"python": { "import pty; pty.spawn('python')" },
-	"sh": {
-		"script -qefc '/bin/sh' /dev/null",
-		"TERM=xterm",
-	},
-}
-
-func detectShell(conn net.Conn) string {
-	var answer string
-	buf := make([]byte, 512)
-	shell := ""
-
-	p, _ := conn.Read(buf)
-	if p > 0 {
-		answer = string(buf[:p])
-	}
-
-	for k, v := range promptFingerprints {
-		if strings.Contains(answer, v) {
-			shell = k
-			break
-		}
-	}
-
-	if len(shell) == 0 {
-		fmt.Println("Could not detect shell from prompt, doing error-based detection")
-		conn.Write([]byte(errorString))
-
-		n, _ := conn.Read(buf[p:])
-		if n > 0 {
-			answer = string(buf[:p+n])
-		}
-
-		for k, v := range errorFingerprints {
-			if strings.Contains(answer, v) {
-				shell = k
-				break
-			}
-		}
-	}
-
-	fmt.Println(answer)
-
-	if len(shell) == 0 {
-		cfmt.Warningln("Could not detect shell, falling back to sh :(")
-		shell = "sh"
-	}
-
-	return shell
-}
 
 func handleErr(err error) {
 	if err != nil {
@@ -163,88 +93,48 @@ func main() {
 		protocol = opts.Protocol
 	}
 
-	// Check if the protocol is "normal", if it has a net.Listen implementation or not
-	normalProto := strings.HasPrefix(opts.Protocol, "tcp") || opts.Protocol == "unix" || opts.Protocol == "unixpacket"
-
 	// Logo & Help
 	fmt.Printf("NetCaTTY %s - by DZervas <dzervas@dzervas.gr>\n\n", Version)
-	fmt.Println("How to get TTY on remote (automatically executed unless you pass -m):")
-	if opts.NoDetect {
-		for shell, cmds := range shellInit {
-			fmt.Printf("%s:\n", shell)
-			for _, cmd := range cmds {
-				fmt.Println(cmd)
-			}
-			fmt.Println()
-		}
-	}
 	fmt.Println()
 
-	// Open a TTY and get its file descriptors
-	t, err := tty.Open()
-	TTY = &netcatty.TTYToggle{TTY: t}
-	handleErr(err)
-	out := TTY.Output()
-	in := &netcatty.Intercept{Reader: TTY.Input()}
-	defer TTY.Close()  // Make sure that the TTY will close
-
+	// InOut
+	t, _ := inout.NewTty()
+	in := action.NewIntercept(t.Input())
 	// Handle Ctrl-C
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 	go func() {
 		<-sig
-		TTY.Close()
+		t.Close()
 		os.Exit(0)
 	}()
 
-
-	// Network Stuff
-	var listen net.Listener
-	var conn *netcatty.ReadWriterProxy
-	if opts.Listen && normalProto {
-		ln, err := net.Listen(protocol, address)
-		listen = ln
-		handleErr(err)
-		cfmt.Infof("[i] Listening for %s on %s\n", protocol, listen.Addr())
-	}
+	// Service
+	event := make(chan service.Event, 1)
+	n := service.NewNet(in, t.Output(), protocol, address)
+	n.Notify(event, service.EDisconnect, service.EConnect)
+	go func() {
+		for {
+			switch <-event {
+			case service.EConnect:
+				if !opts.NoRaw { t.EnableRawTty() }
+			case service.EDisconnect:
+				t.DisableRawTty()
+			}
+		}
+	}()
 
 	// Main Loop
 	for {
-		cfmt.Infoln("[i] Waiting for connection...")
-		if opts.Listen {
-			if !normalProto {
-				ln, err := net.ListenPacket(protocol, address)
-				listen = &netcatty.PacketListener{ln}
-				handleErr(err)
-				cfmt.Infof("[i] Listening for %s on %s\n", protocol, listen.Addr())
-			}
-
-			c, err := listen.Accept()
-			handleErr(err)
-			conn = &netcatty.ReadWriterProxy{c}
-		} else {
-			c, err := net.Dial(protocol, address)
-			handleErr(err)
-			conn = &netcatty.ReadWriterProxy{c}
-		}
-
-		cfmt.Successln("[+] New client connection:", conn.RemoteAddr())
-		fmt.Println("Press Ctrl-] to close connection")
-
 		if !opts.NoDetect {
-			shell := detectShell(conn)
-			cfmt.Infof("[i] Detected %s shell!\n", shell)
-
-			for _, cmd := range shellInit[shell] {
-				conn.Write([]byte(cmd + "\n"))
-			}
-
-			if !opts.NoRaw { TTY.EnableRawTTY() }
+			// cfmt.Infof("[i] Detected %s shell!\n", shell)
 		}
 
-		conn.ProxyFiles(in, out)
-
-		conn.Close()
-		TTY.DisableRawTTY()
+		if opts.Listen {
+			err = n.Listen()
+		} else {
+			err = n.Dial()
+		}
+		handleErr(err)
 	}
 }
