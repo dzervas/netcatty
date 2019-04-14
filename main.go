@@ -63,8 +63,7 @@ var opts struct {
 	TCP			bool		`short:"t" long:"tcp"           description:"TCP mode (default)"`
 	// TODO
 	Telnet		bool		`short:"T" long:"telnet"        description:"answer using TELNET negotiation"`
-	// TODO
-	UDP			bool		`short:"u" long:"udp"           description:"UDP mode (implies -D)"`
+	UDP			bool		`short:"u" long:"udp"           description:"UDP mode"`
 	// TODO
 	Verbose		bool		`short:"v" long:"verbose"       description:"-- Not effective, backwards compatibility"`
 	// TODO
@@ -84,6 +83,8 @@ var opts struct {
 
 func main() {
 	// Arguments
+	// TODO: Break this into groups, in a different small function
+	// TODO: Add option name to all arguments (tunnel=<something>)
 	parser := flags.NewNamedParser("netcatty", flags.Default)
 	parser.AddGroup("Application Options", "", &opts)
 	_, err := parser.Parse()
@@ -109,32 +110,48 @@ func main() {
 	fmt.Println()
 
 	// InOut
-	t, _ := inout.NewTty()
-	in := action.NewIntercept(t.Input())
-	// Handle Ctrl-C
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-	go func() {
-		<-sig
-		os.Exit(0)
-		t.Close()
-	}()
+	// TODO: Fix the loggers
+	var ioc io.ReadWriteCloser
+	var actions []func(service.Server) action.Actor
+
+	if len(opts.Exec) > 0 {
+		ioc, err = inout.NewExec(opts.Exec)
+		handleErr(err)
+	} else {
+		t, err := inout.NewTty()
+		handleErr(err)
+		in := action.NewIntercept(t.Input())
+		// Handle Ctrl-C
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		go func() {
+			<-sig
+			t.Close()
+			os.Exit(0)
+		}()
+
+		ioc = NewReadWriteCloser(in, t.Output(), t)
+
+		if !opts.NoRaw {
+			a := action.AutoRawActionGetter{t}
+			actions = append(actions, a.GetAutoRawAction)
+		}
+	}
+
 
 	// Service
-	ioc := NewReadWriteCloser(in, t.Output(), t)
 	var s service.Server
 	s = service.NewNet(ioc, protocol, address)
 
 	// Actions
-	if !opts.NoRaw { action.NewLocalRawTTY(s, t).Register() }
 	if !opts.NoDetect { action.NewRaiseTTY(s).Register() }
+
+	for _, a := range actions {
+		a(s).Register()
+	}
 
 	// Main Loop
 	for {
-		if !opts.NoDetect {
-			// cfmt.Infof("[i] Detected %s shell!\n", shell)
-		}
-
 		if opts.Listen {
 			err = s.Listen()
 		} else {

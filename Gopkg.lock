@@ -18,6 +18,14 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:47dc4f6ee8a7dda99b516b56cb7fcc4f53ca94756263bdcea55c918a60126062"
+  name = "github.com/kr/pty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "521317be5ebc228a0f0ede099fa2a0b5ece22e49"
+  version = "v1.1.4"
+
+[[projects]]
   branch = "master"
   digest = "1:be40f095cd741773905744f16c1f7a21fd9226ccd0529f019deb7da6d667f71c"
   name = "github.com/logrusorgru/aurora"
@@ -71,6 +79,7 @@
   input-imports = [
     "github.com/amoghe/distillog",
     "github.com/jessevdk/go-flags",
+    "github.com/kr/pty",
     "github.com/mattn/go-tty",
     "github.com/mingrammer/cfmt",
     "golang.org/x/sys/unix",

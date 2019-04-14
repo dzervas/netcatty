@@ -12,7 +12,6 @@ var State = map[string]string{}
 
 type Actor interface {
 	Register()
-	Fire()
 	Unregister()
 }
 

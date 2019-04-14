@@ -5,25 +5,29 @@ import (
 	"github.com/dzervas/netcatty/service"
 )
 
-type LocalRawTTY struct {
-	*Action
-	tty *inout.Tty
+type AutoRawActionGetter struct {
+	*inout.Tty
 }
 
-func NewLocalRawTTY(ser service.Server, tty *inout.Tty) *LocalRawTTY {
+func (this *AutoRawActionGetter) GetAutoRawAction(ser service.Server) Actor {
 	action := &Action{
 		service: ser,
 		events: []service.Event{service.EConnect, service.EDisconnect},
 	}
-	return &LocalRawTTY{action, tty}
+	return &AutoRaw{action, this.Tty}
 }
 
-func (this *LocalRawTTY) Register() {
+type AutoRaw struct {
+	*Action
+	tty *inout.Tty
+}
+
+func (this *AutoRaw) Register() {
 	this.Action.Register()
 	go this.handleConnections()
 }
 
-func (this *LocalRawTTY) handleConnections() {
+func (this *AutoRaw) handleConnections() {
 	loop: for {
 		switch e := <-this.channel; e.Event {
 		case service.EConnect:
