@@ -37,7 +37,7 @@ func NewReadWriteCloser(r io.Reader, w io.Writer, c io.Closer) io.ReadWriteClose
 var opts struct {
 	// TODO
 	Close		bool		`short:"c" long:"close"         description:"Close connection on EOF from stdin"`
-	NoDetect	bool		`short:"D" long:"no-detect"     description:"Do not detect remote shell (implies -R)"`
+	Detect		bool		`short:"D" long:"detect"        description:"Detect remote shell automatically and try to raise a TTY on the remote (action)"`
 	// TODO
 	Exec		string		`short:"e" long:"exec"          description:"Program to exec after connect"`
 	// TODO
@@ -57,7 +57,7 @@ var opts struct {
 	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
 	// TODO
 	Randomize	bool		`short:"r" long:"randomize"     description:"Randomize local and remote ports"`
-	NoRaw		bool		`short:"R" long:"no-raw"        description:"Do not puy local TTY in Raw mode automatically"`
+	Raw			bool		`short:"R" long:"auto-raw"      description:"Put local TTY in Raw mode on connect (action)"`
 	// TODO
 	Source		string		`short:"s" long:"source"        description:"Local source address (ip or hostname)"`
 	TCP			bool		`short:"t" long:"tcp"           description:"TCP mode (default)"`
@@ -72,7 +72,6 @@ var opts struct {
 	Hexdump		bool		`short:"x" long:"hexdump"       description:"Hexdump incoming and outgoing traffic"`
 	// TODO
 	Wait		int			`short:"w" long:"wait"          description:"Timeout for connects and final net reads"`
-	// TODO
 	Zero		bool		`short:"z" long:"zero"          description:"Zero-I/O mode (used for scanning)"`
 
 	Positional struct {
@@ -107,7 +106,6 @@ func main() {
 
 	// Logo & Help
 	fmt.Printf("NetCaTTY %s - by DZervas <dzervas@dzervas.gr>\n\n", Version)
-	fmt.Println()
 
 	// InOut
 	// TODO: Fix the loggers
@@ -116,6 +114,9 @@ func main() {
 
 	if len(opts.Exec) > 0 {
 		ioc, err = inout.NewExec(opts.Exec)
+		handleErr(err)
+	} else if opts.Zero {
+		ioc, err = inout.NewZero()
 		handleErr(err)
 	} else {
 		t, err := inout.NewTty()
@@ -132,7 +133,7 @@ func main() {
 
 		ioc = NewReadWriteCloser(in, t.Output(), t)
 
-		if !opts.NoRaw {
+		if opts.Raw {
 			a := action.AutoRawActionGetter{t}
 			actions = append(actions, a.GetAutoRawAction)
 		}
@@ -144,19 +145,17 @@ func main() {
 	s = service.NewNet(ioc, protocol, address)
 
 	// Actions
-	if !opts.NoDetect { action.NewRaiseTTY(s).Register() }
+	if opts.Detect { action.NewRaiseTTY(s).Register() }
 
 	for _, a := range actions {
 		a(s).Register()
 	}
 
 	// Main Loop
-	for {
-		if opts.Listen {
-			err = s.Listen()
-		} else {
-			err = s.Dial()
-		}
-		handleErr(err)
+	if opts.Listen {
+		err = s.Listen()
+	} else {
+		err = s.Dial()
 	}
+	handleErr(err)
 }
