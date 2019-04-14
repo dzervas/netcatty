@@ -1,15 +1,23 @@
 package inout
 
 import (
-	"os"
+	"io"
 	"os/exec"
 	"errors"
 	"strings"
-
-	"github.com/kr/pty"
 )
 
-func NewExecArgs(args []string) (*os.File, error) {
+type RWC struct {
+	io.Reader
+	io.Writer
+	io.Closer
+}
+
+func NewReadWriteCloser(r io.Reader, w io.Writer, c io.Closer) io.ReadWriteCloser {
+	return RWC{r, w, c}
+}
+
+func NewExecArgs(args []string) (*RWC, error) {
 	var c *exec.Cmd
 
 	if len(args) > 1 {
@@ -20,9 +28,14 @@ func NewExecArgs(args []string) (*os.File, error) {
 		return nil, errors.New("No command given")
 	}
 
-	return pty.Start(c)
+	// TODO: Run it in a TTY
+	// TODO: Combine Stderr
+	si, _ := c.StdinPipe()
+	so, _ := c.StdoutPipe()
+
+	return &RWC{so, si, nil}, c.Start()
 }
 
-func NewExec(cmd string) (*os.File, error) {
+func NewExec(cmd string) (*RWC, error) {
 	return NewExecArgs(strings.Split(cmd, " "))
 }
