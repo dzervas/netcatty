@@ -10,21 +10,46 @@ var Log = distillog.NewStdoutLogger("service")
 type Event int
 
 const (
-	EStart		Event = 0
-	EStop		Event = 1
-	EConnect	Event = 2
-	EDisconnect	Event = 3
+	EBlock		Event = 0
+	EUnblock	Event = 1
+	EStart		Event = 2
+	EStop		Event = 3
+	EConnect	Event = 4
+	EDisconnect	Event = 5
+
+	// Not fired by Service, reserved to unregister an Action
+	EUnregister	Event = -1
 )
 
-type Service struct {
-	Input io.Reader
-	Output io.Writer
-	channels map[Event][]chan<- Event
+type EventRWC struct {
+	Event Event
+	ReadWriteCloser io.ReadWriteCloser
 }
 
-func (this *Service) Notify(c chan<- Event, events ...Event) {
+type Server interface {
+	Notify(chan EventRWC, ...Event)
+	Stop(chan EventRWC)
+	Listen() error
+	Dial() error
+}
+
+type Service struct {
+	io.ReadWriteCloser
+	channels map[Event][]chan EventRWC
+}
+
+func (this *Service) Notify(c chan EventRWC, events ...Event) {
 	if this.channels == nil {
-		this.channels = map[Event][]chan<- Event{}
+		this.channels = map[Event][]chan EventRWC{}
+	}
+
+	if len(events) == 0 {
+		events = []Event{
+			EStart,
+			EStop,
+			EConnect,
+			EDisconnect,
+		}
 	}
 
 	for _, e := range events {
@@ -32,9 +57,30 @@ func (this *Service) Notify(c chan<- Event, events ...Event) {
 	}
 }
 
-func (this *Service) fireEvent(e Event) {
+func (this *Service) Stop(c chan EventRWC) {
+	for e, channs := range this.channels {
+		for i, chann := range channs {
+			if chann == c {
+				this.channels[e] = append(channs[:i], channs[i+1:]...)
+			}
+		}
+	}
+}
+
+// TODO: Maybe instead of rwc, send a "data" struct
+func (this *Service) fireEvent(e Event, rwc io.ReadWriteCloser) {
+	erwc := EventRWC{e, rwc}
+
 	for _, c := range this.channels[e] {
-		c <- e
+		c <- erwc
+
+		select {
+		case e := <-c:
+			if e.Event == EBlock {
+				<-c
+			}
+		default:
+		}
 	}
 }
 
@@ -45,8 +91,8 @@ func (this *Service) ProxyLoop(in io.Reader, out io.Writer) {
 		done <- true
 	}
 
-	go cp(this.Output, in)
-	go cp(out, this.Input)
+	go cp(this, in)
+	go cp(out, this)
 
 	// Wait until the socket is closed (or you exit)
 	<-done

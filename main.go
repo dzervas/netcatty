@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -21,6 +22,16 @@ func handleErr(err error) {
 		cfmt.Errorln(err)
 		os.Exit(1)
 	}
+}
+
+type RWC struct {
+	io.Reader
+	io.Writer
+	io.Closer
+}
+
+func NewReadWriteCloser(r io.Reader, w io.Writer, c io.Closer) io.ReadWriteCloser {
+	return RWC{r, w, c}
 }
 
 var opts struct {
@@ -105,24 +116,18 @@ func main() {
 	signal.Notify(sig, os.Interrupt)
 	go func() {
 		<-sig
-		t.Close()
 		os.Exit(0)
+		t.Close()
 	}()
 
 	// Service
-	event := make(chan service.Event, 1)
-	n := service.NewNet(in, t.Output(), protocol, address)
-	n.Notify(event, service.EDisconnect, service.EConnect)
-	go func() {
-		for {
-			switch <-event {
-			case service.EConnect:
-				if !opts.NoRaw { t.EnableRawTty() }
-			case service.EDisconnect:
-				t.DisableRawTty()
-			}
-		}
-	}()
+	ioc := NewReadWriteCloser(in, t.Output(), t)
+	var s service.Server
+	s = service.NewNet(ioc, protocol, address)
+
+	// Actions
+	if !opts.NoRaw { action.NewLocalRawTTY(s, t).Register() }
+	if !opts.NoDetect { action.NewRaiseTTY(s).Register() }
 
 	// Main Loop
 	for {
@@ -131,9 +136,9 @@ func main() {
 		}
 
 		if opts.Listen {
-			err = n.Listen()
+			err = s.Listen()
 		} else {
-			err = n.Dial()
+			err = s.Dial()
 		}
 		handleErr(err)
 	}

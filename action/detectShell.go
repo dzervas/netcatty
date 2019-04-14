@@ -3,6 +3,8 @@ package action
 import (
 	"io"
 	"strings"
+
+	"github.com/dzervas/netcatty/service"
 )
 
 var errorString = "netcatty;\r"
@@ -22,7 +24,38 @@ var errorFingerprints = map[string]string{
 	"sh": "netcatty: command not found",
 }
 
-func DetectShell(conn io.ReadWriter) {
+type DetectShell struct {
+	*Action
+}
+
+func NewDetectShell(ser service.Server) *DetectShell {
+	action := &Action{
+		service: ser,
+		events: []service.Event{service.EConnect},
+	}
+	return &DetectShell{action}
+}
+
+func (this *DetectShell) Register() {
+	this.Action.Register()
+	go this.handleConnections()
+}
+
+func (this *DetectShell) handleConnections() {
+	loop: for {
+		switch e := <-this.channel; e.Event {
+		case service.EConnect:
+			Log.Debugln("Detecting shell...")
+			this.Block()
+			detect(e.ReadWriteCloser)
+			this.Unblock()
+		case service.EUnregister:
+			break loop
+		}
+	}
+}
+
+func detect(conn io.ReadWriter) {
 	var answer string
 	buf := make([]byte, 512)
 	shell := ""
@@ -58,4 +91,10 @@ func DetectShell(conn io.ReadWriter) {
 
 	Log.Infoln(answer)
 	State["shell"] = shell
+
+	if len(shell) > 0 {
+		Log.Infof("Detected %s shell on remote", shell)
+	} else {
+		Log.Warningln("Could not detect shell")
+	}
 }
