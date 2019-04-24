@@ -12,6 +12,7 @@ import (
 	"github.com/dzervas/netcatty/inout"
 	"github.com/dzervas/netcatty/action"
 
+	"github.com/dzervas/mage"
 	"github.com/jessevdk/go-flags"
 	"github.com/mingrammer/cfmt"
 )
@@ -68,6 +69,7 @@ var optsService struct {
 	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
 	TCP			bool		`short:"t" long:"tcp"           description:"TCP mode (default)"`
 	UDP			bool		`short:"u" long:"udp"           description:"UDP mode"`
+	Mage		bool		`long:"mage"                    description:"Use the mage protocol over the selected service"`
 }
 
 var optsInOut struct {
@@ -76,7 +78,7 @@ var optsInOut struct {
 	Exec		string		`short:"e" long:"exec"          description:"Program to exec after connect"`
 	Interval	int			`short:"i" long:"interval"      description:"Delay interval for data sent, ports scanned"`
 	// TODO: Needs exposure of listen/dial conns
-	Tunnel		string		`short:"L" long:"tunnel"        description:"Forward local port to remote address"`
+	// Tunnel		string		`short:"L" long:"tunnel"        description:"Forward local port to remote address"`
 	// TODO
 	Output		string		`short:"o" long:"output"        description:"Output hexdump traffic to FILE (implies -x)"`
 	HexDump		bool		`short:"x" long:"hexdump"       description:"Hexdump incoming and outgoing traffic"`
@@ -90,7 +92,6 @@ var optsAction struct {
 
 func main() {
 	// Arguments
-	// TODO: Break this into groups, in a different small function
 	// TODO: Add option name to all arguments (tunnel=<something>)
 	parser := flags.NewNamedParser("netcatty", flags.Default)
 	parser.AddGroup("Application Options", "", &opts)
@@ -120,7 +121,7 @@ func main() {
 		protocol = optsService.Protocol
 	}
 
-	// Logo & Help
+	// Logo
 	fmt.Printf("NetCaTTY %s - by DZervas <dzervas@dzervas.gr>\n\n", Version)
 
 	// InOut
@@ -180,5 +181,16 @@ func main() {
 	}
 
 	handleErr(err)
-	s.ProxyLoop(conn, conn)
+
+	if optsService.Mage {
+		stream := &mage.Stream{
+			Reader: conn,
+			Writer: conn,
+			// NeedsDataLen: true,
+		}
+		readwriter := stream.GetReadWriter(0)
+		s.ProxyLoop(readwriter, readwriter)
+	} else {
+		s.ProxyLoop(conn, conn)
+	}
 }

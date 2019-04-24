@@ -29,9 +29,10 @@ func NewExecArgs(args []string) (*RWC, error) {
 	}
 
 	// TODO: Run it in a TTY
-	// TODO: Combine Stderr
 	si, _ := c.StdinPipe()
-	so, _ := c.StdoutPipe()
+	out, _ := c.StdoutPipe()
+	err, _ := c.StderrPipe()
+	so := io.MultiReader(out, err)
 
 	return &RWC{so, si, nil}, c.Start()
 }
