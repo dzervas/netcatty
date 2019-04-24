@@ -2,6 +2,8 @@ package service
 
 import (
 	"io"
+	"net"
+
 	"github.com/amoghe/distillog"
 )
 
@@ -29,8 +31,9 @@ type EventRWC struct {
 type Server interface {
 	Notify(chan EventRWC, ...Event)
 	Stop(chan EventRWC)
-	Listen() error
-	Dial() error
+	Listen(string, string) (*LoggedListener, error)
+	Dial(string, string) (*LoggedConn, error)
+	ProxyLoop(io.Reader, io.Writer)
 }
 
 type Service struct {
@@ -96,4 +99,37 @@ func (this *Service) ProxyLoop(in io.Reader, out io.Writer) {
 
 	// Wait until the socket is closed (or you exit)
 	<-done
+}
+
+type LoggedListener struct {
+	*Service
+	net.Listener
+}
+
+func (this *LoggedListener) Accept() (conn net.Conn, err error) {
+	Log.Infoln("Waiting for connection...")
+
+	conn, err = this.Listener.Accept()
+
+	Log.Infof("Client %s connected\n", conn.RemoteAddr())
+	this.fireEvent(EConnect, conn)
+
+	return conn, err
+}
+
+func (this *LoggedListener) Close() (err error) {
+	Log.Infof("Stopped listening on %s\n", this.Addr())
+	this.fireEvent(EStop, nil)
+	return this.Close()
+}
+
+type LoggedConn struct {
+	*Service
+	net.Conn
+}
+
+func (this *LoggedConn) Close() (err error) {
+	Log.Infof("Client %s disconnected\n", this.RemoteAddr())
+	this.fireEvent(EDisconnect, this)
+	return this.Close()
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -159,7 +160,7 @@ func main() {
 
 	// Service
 	var s service.Server
-	s = service.NewNet(ioc, protocol, address)
+	s = service.NewNet(ioc)
 
 	// Actions
 	if optsAction.Detect { action.NewRaiseTTY(s).Register() }
@@ -169,10 +170,15 @@ func main() {
 	}
 
 	// Main Loop
+	var conn net.Conn
 	if opts.Listen {
-		err = s.Listen()
+		ln, e := s.Listen(protocol, address)
+		handleErr(e)
+		conn, err = ln.Accept()
 	} else {
-		err = s.Dial()
+		conn, err = s.Dial(protocol, address)
 	}
+
 	handleErr(err)
+	s.ProxyLoop(conn, conn)
 }
