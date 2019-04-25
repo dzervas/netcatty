@@ -69,7 +69,7 @@ var optsService struct {
 	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
 	TCP			bool		`short:"t" long:"tcp"           description:"TCP mode (default)"`
 	UDP			bool		`short:"u" long:"udp"           description:"UDP mode"`
-	Mage		bool		`long:"mage"                    description:"Use the mage protocol over the selected service"`
+	Mage		int			`long:"mage"                    description:"Use the mage protocol over the selected service, on the specified channel" default:-1`
 }
 
 var optsInOut struct {
@@ -182,13 +182,12 @@ func main() {
 
 	handleErr(err)
 
-	if optsService.Mage {
+	if optsService.Mage >= 0 {
 		stream := &mage.Stream{
 			Reader: conn,
 			Writer: conn,
-			// NeedsDataLen: true,
 		}
-		readwriter := stream.GetReadWriter(0)
+		readwriter := stream.GetReadWriter(uint8(optsService.Mage))
 		s.ProxyLoop(readwriter, readwriter)
 	} else {
 		s.ProxyLoop(conn, conn)
