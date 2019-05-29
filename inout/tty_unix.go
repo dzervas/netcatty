@@ -7,7 +7,7 @@ import "golang.org/x/sys/unix"
 
 func (this *Tty) EnableRawTty() {
 	if this.reset == nil {
-		Log.Warningln("[!] Entering RAW mode (Ctrl-c will go to remote) - press Alt-r to go back to normal")
+		Log.Warningln("[!] Entering RAW mode (Ctrl-c will go to remote)")
 		this.reset, _ = this.Raw()
 
 		// Very targeted fix for broken raw tty for non-tty output
