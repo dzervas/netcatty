@@ -49,6 +49,7 @@ var opts struct {
 	Port		string		`short:"p" long:"local-port"    description:"Local port number"`
 	// Does not have any effect - even on netcat
 	Randomize	bool		`short:"r" long:"randomize"     description:"Randomize local and remote ports"`
+	NoRaw		bool		`short:"R" long:"no-raw"        description:"Do NOT put TTY in Raw mode"`
 	Source		string		`short:"s" long:"source"        description:"Local source address (ip or hostname)"`
 	// TODO
 	Telnet		bool		`short:"T" long:"telnet"        description:"answer using TELNET negotiation"`
@@ -66,10 +67,10 @@ var opts struct {
 }
 
 var optsService struct {
-	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}[:<protocol-number>|:<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
+	Protocol	string		`short:"P" long:"protocol"      description:"Provide protocol in the form of tcp{,4,6}|udp{,4,6}|unix{,gram,packet}|ip{,4,6}:[<protocol-number>|<protocol-name>]\nFor <protocol-number> check https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml"`
 	TCP			bool		`short:"t" long:"tcp"           description:"TCP mode (default)"`
 	UDP			bool		`short:"u" long:"udp"           description:"UDP mode"`
-	Mage		int			`long:"mage"                    description:"Use the mage protocol over the selected service, on the specified channel" default:-1`
+	Mage		int			`long:"mage"                    description:"Use the mage protocol over the selected service, on the specified channel" default:"-1"`
 }
 
 var optsInOut struct {
@@ -87,7 +88,6 @@ var optsInOut struct {
 
 var optsAction struct {
 	Detect		bool		`short:"D" long:"detect"        description:"Detect remote shell automatically and try to raise a TTY on the remote" group:"Actions"`
-	Raw			bool		`short:"R" long:"auto-raw"      description:"Put local TTY in Raw mode on connect (action)"`
 }
 
 func main() {
@@ -98,6 +98,7 @@ func main() {
 	parser.AddGroup("Service", "", &optsService)
 	parser.AddGroup("InOut", "", &optsInOut)
 	parser.AddGroup("Action", "", &optsAction)
+
 	_, err := parser.Parse()
 	if err != nil { return }
 
@@ -127,7 +128,6 @@ func main() {
 	// InOut
 	// TODO: Fix the loggers
 	var ioc io.ReadWriteCloser
-	var actions []func(service.Server) action.Actor
 
 	if len(optsInOut.Exec) > 0 {
 		ioc, err = inout.NewExec(optsInOut.Exec)
@@ -138,7 +138,10 @@ func main() {
 	} else {
 		t, err := inout.NewTty()
 		handleErr(err)
-		in := action.NewIntercept(t.Input())
+
+		// Handle exit cases
+		defer t.Close()
+
 		// Handle Ctrl-C
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt)
@@ -148,11 +151,12 @@ func main() {
 			os.Exit(0)
 		}()
 
+		in := action.NewIntercept(t.Input())
 		ioc = NewReadWriteCloser(in, t.Output(), t)
 
-		if optsAction.Raw {
-			a := action.AutoRawActionGetter{t}
-			actions = append(actions, a.GetAutoRawAction)
+		if !opts.NoRaw {
+			t.EnableRawTty()
+			// in.Notify(ui.Channel)
 		}
 	}
 
@@ -166,10 +170,6 @@ func main() {
 	// Actions
 	if optsAction.Detect { action.NewRaiseTTY(s).Register() }
 
-	for _, a := range actions {
-		a(s).Register()
-	}
-
 	// Main Loop
 	var conn net.Conn
 	if opts.Listen {
@@ -182,6 +182,7 @@ func main() {
 
 	handleErr(err)
 
+	// Mage Protocol
 	if optsService.Mage >= 0 {
 		stream := &mage.Stream{
 			Reader: conn,
