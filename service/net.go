@@ -17,7 +17,6 @@ func NewNet(ioc io.ReadWriteCloser) *Net {
 func (this *Net) Listen(network, address string) (ln *LoggedListener, err error) {
 	var listen net.Listener
 
-	// TODO: This should break into a separate server
 	// Check if the protocol is "normal", if it has a net.Listen implementation or not
 	normalProto := strings.HasPrefix(network, "tcp") ||
 		network == "unix" ||
