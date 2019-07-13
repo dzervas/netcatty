@@ -11,6 +11,7 @@ import (
 	"github.com/dzervas/netcatty/service"
 	"github.com/dzervas/netcatty/inout"
 	"github.com/dzervas/netcatty/action"
+	// "github.com/dzervas/netcatty/ui"
 
 	"github.com/dzervas/mage"
 	"github.com/jessevdk/go-flags"
@@ -181,6 +182,8 @@ func main() {
 	}
 
 	handleErr(err)
+
+	// go ui.UIMain()
 
 	// Mage Protocol
 	if optsService.Mage >= 0 {

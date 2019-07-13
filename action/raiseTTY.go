@@ -30,15 +30,15 @@ func NewRaiseTTY(ser service.Server) *RaiseTTY {
 // TODO: Make proper dependency registration
 func (this *RaiseTTY) Register() {
 	this.Action.Register()
-	go this.handleConnections()
+	go this.Handle()
 }
 
-func (this *RaiseTTY) handleConnections() {
+func (this *RaiseTTY) Handle() {
 	loop: for {
 		switch e := <-this.channel; e.Event {
 		case service.EConnect:
 			this.Block()
-			detect(e.ReadWriteCloser)
+			DetectShellRun(e.ReadWriteCloser)
 			raise(e.ReadWriteCloser)
 			this.Unblock()
 		case service.EUnregister:

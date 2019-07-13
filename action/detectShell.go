@@ -38,16 +38,16 @@ func NewDetectShell(ser service.Server) *DetectShell {
 
 func (this *DetectShell) Register() {
 	this.Action.Register()
-	go this.handleConnections()
+	go this.Handle()
 }
 
-func (this *DetectShell) handleConnections() {
+func (this *DetectShell) Handle() {
 	loop: for {
 		switch e := <-this.channel; e.Event {
 		case service.EConnect:
 			Log.Debugln("Detecting shell...")
 			this.Block()
-			detect(e.ReadWriteCloser)
+			DetectShellRun(e.ReadWriteCloser)
 			this.Unblock()
 		case service.EUnregister:
 			break loop
@@ -55,7 +55,7 @@ func (this *DetectShell) handleConnections() {
 	}
 }
 
-func detect(conn io.ReadWriter) {
+func DetectShellRun(conn io.ReadWriter) {
 	var answer string
 	buf := make([]byte, 512)
 	shell := ""
