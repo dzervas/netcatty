@@ -1,2 +1,4 @@
 vendor
 dist/
+.idea/
+go.sum
